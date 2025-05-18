@@ -1,0 +1,76 @@
+stages:
+  - build
+  - test
+  - docker_build
+  - docker_push
+  - deploy
+
+variables:
+  IMAGE_NAME: joellots/app
+  DOCKER_TAG: "v1" 
+
+# Cache dependencies
+cache:
+  paths:
+    - venv/
+    - .cache/pip/
+
+# Build Stage
+build:
+  stage: build
+  script:
+    - echo "Building application..."
+    - python3 --version
+    - python3 -m venv venv
+    - source venv/bin/activate
+    - pip install -r requirements.txt
+  artifacts:
+    paths:
+      - venv/
+  tags:
+    - st16-runner
+
+# Test Stage
+test:
+  stage: test
+  script:
+    - source venv/bin/activate
+    - python3 -m unittest discover
+  needs: ["build"]
+  tags:
+    - st16-runner
+
+# Docker Build Stage
+docker_build:
+  stage: docker_build
+  script:
+    - docker build -t $IMAGE_NAME:$DOCKER_TAG .
+  rules:
+    - if: '$CI_COMMIT_BRANCH == "main" || $CI_COMMIT_BRANCH == "develop"'
+  tags:
+    - st16-runner
+
+# Docker Push Stage
+docker_push:
+  stage: docker_push
+  before_script:
+    - echo "$DOCKER_PASSWORD" | docker login -u "$DOCKER_USERNAME" --password-stdin
+  script:
+    - docker push $IMAGE_NAME:$DOCKER_TAG
+  rules:
+    - if: '$CI_COMMIT_BRANCH == "main" || $CI_COMMIT_BRANCH == "develop"'
+  needs: ["docker_build"] 
+  tags:
+    - st16-runner
+
+# Deploy Stage using Ansible
+deploy:
+  stage: deploy
+  script:
+    - echo "Deploying application using Ansible..."
+    - ansible-playbook -i inventory deploy.yml --extra-vars "image_name=$IMAGE_NAME image_tag=$DOCKER_TAG"
+  rules:
+    - if: '$CI_COMMIT_BRANCH == "main" || $CI_COMMIT_BRANCH == "develop"'
+  needs: ["docker_push"] 
+  tags:
+    - st16-runner

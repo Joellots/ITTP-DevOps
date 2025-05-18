@@ -1,0 +1,35 @@
+---
+- name: Install Nginx
+  apt:
+    name: nginx
+    state: present
+
+- name: Copy Nginx Configuration
+  template:
+    src: nginx.conf.j2
+    dest: "{{ nginx_conf }}"
+  notify: Restart Nginx
+
+- name: Start and Enable Nginx
+  service:
+    name: nginx
+    state: started
+    enabled: yes
+
+- name: Verify Nginx Accessibility
+  uri:
+    url: "http://localhost:{{ nginx_port }}"
+    return_content: yes
+  register: nginx_status
+  until: nginx_status.status == 200
+  retries: 5
+  delay: 5
+
+- name: Display Nginx Status
+  debug:
+    var: nginx_status.status
+
+- name: Create Default HTML Page
+  copy:
+    content: "<html><body><h1>Welcome to Nginx!</h1></body></html>"
+    dest: "{{ nginx_root }}/index.html"

@@ -1,0 +1,61 @@
+stages:
+  - build
+  - test
+  - docker_build
+  - docker_push
+  - deploy
+
+variables:
+  IMAGE_NAME: joellots/app
+
+# Build Stage
+build:
+  stage: build
+  script:
+    - echo "Building application..."
+    - python3 --version
+  tags:
+    - st16-runner
+
+# Test Stage
+test:
+  stage: test
+  script:
+    - python3 -m venv venv
+    - source venv/bin/activate 
+    - pip install -r requirements.txt
+    - python3 -m unittest discover
+  tags:
+    - st16-runner
+  
+# Docker Build Stage
+docker_build:
+  stage: docker_build
+  script:
+    - docker build -t $IMAGE_NAME:v1 .
+  only:
+    - main
+  tags:
+    - st16-runner
+
+# Docker Push Stage
+docker_push:
+  stage: docker_push
+  before_script:
+    - echo "$DOCKER_PASSWORD" | docker login -u "$DOCKER_USERNAME" --password-stdin
+  script:
+    - docker push $IMAGE_NAME:v1
+  only:
+    - main
+  tags:
+    - st16-runner
+    
+# Deploy Stage
+deploy:
+  stage: deploy
+  script:
+    - ssh ubuntu@"$DEPLOYMENT_SERVER_DNS" "docker pull $IMAGE_NAME:v1 && docker run -d -p 80:5000 $IMAGE_NAME:v1"
+  only:
+    - main
+  tags:
+    - st16-runner
