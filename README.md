@@ -17,4 +17,4 @@
 | 2 | Docker + Nginx + HTTPS   | Docker, OpenSSL          |
 | 3 | Мониторинг диска         | Bash, SMTP               |
 | 4 | CI/CD пайплайн           | GitLab           |
-| 5 | Облачная инфраструктура  | Terraform (AWS/) |
+| 5 | Облачная инфраструктура  | Terraform (AWS) |
